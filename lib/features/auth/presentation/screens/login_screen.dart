@@ -1,9 +1,18 @@
+import 'package:exercise_projects/core/config/app_config.dart';
+import 'package:exercise_projects/core/models/enum/state_value.dart';
+import 'package:exercise_projects/core/resources/colors_and_styles.dart';
 import 'package:exercise_projects/core/routing/routing.dart';
-import 'package:exercise_projects/core/validatiors/email_validator.dart';
+import 'package:exercise_projects/core/widgets/flushbar.dart';
+import 'package:exercise_projects/features/auth/bloc/auth_cubit.dart';
+import 'package:exercise_projects/features/auth/bloc/auth_state.dart';
+import 'package:exercise_projects/features/auth/presentation/widgets/auth_buttons.dart';
+import 'package:exercise_projects/features/auth/presentation/widgets/auth_phone_field.dart';
+import 'package:exercise_projects/features/auth/presentation/widgets/auth_screen_shell.dart';
+import 'package:exercise_projects/features/auth/presentation/widgets/auth_underline_field.dart';
 import 'package:flutter/material.dart';
-import 'package:email_validator/email_validator.dart';
-import '../../../../core/widgets/flushbar.dart';
-import '../widgets/outline_border.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_screenutil_plus/flutter_screenutil_plus.dart';
+import 'package:provider/provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,221 +22,149 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _userNameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _passwordController = TextEditingController();
 
-  /// TextField controllers
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
+  @override
+  void initState() {
+    super.initState();
+    context.read<AuthCubit>().resetStatus();
+  }
 
-  /// for the forms
-  final formKey = GlobalKey<FormState>();
+  @override
+  void dispose() {
+    _userNameController.dispose();
+    _phoneController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
-  bool isHidden = true;
-
+  void _submit() {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    context.read<AuthCubit>().login(
+          userName: _userNameController.text,
+          phone: _phoneController.text,
+          password: _passwordController.text,
+        );
+  }
 
   @override
   Widget build(BuildContext context) {
+    return BlocConsumer<AuthCubit, AuthState>(
+      listenWhen: (prev, curr) => prev.status != curr.status,
+      listener: (context, state) async {
+        if (state.status == StateValue.loaded) {
+          await context.read<AppConfig>().setIsLogIn(true, asAdmin: false);
+          isLoggedIn = true;
+          if (!context.mounted) return;
+          await showSimpleFlushBar(
+            context,
+            'Welcome back',
+            'You have logged in successfully',
+            Icons.waving_hand,
+            successColor,
+          );
+          if (!context.mounted) return;
+          context.read<AuthCubit>().resetStatus();
+        } else if (state.status == StateValue.fail && state.errorMessage.isNotEmpty) {
+          showSimpleFlushBar(
+            context,
+            'Login failed',
+            state.errorMessage,
+            Icons.error_outline,
+            errorColor,
+          );
+          context.read<AuthCubit>().resetStatus();
+        }
+      },
+      builder: (context, state) {
+        final isLoading = state.status == StateValue.loading;
 
-    debugPrint(
-      'canPop: ${Navigator.of(context).canPop()}',
-    );
-
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.blue,
-        centerTitle: true,
-
-      ),
-      body: Center(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.all(20),
+        return AuthScreenShell(
+          title: '',
+          form: Form(
+            key: _formKey,
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(
+                AuthUnderlineField(
+                  label: 'User Name',
+                  controller: _userNameController,
+                  validator: (value) {
+                    if ((value ?? '').trim().isEmpty) {
+                      return 'Enter your user name';
+                    }
+                    return null;
+                  },
+                ),
+                SizedBox(height: 22.h),
+                AuthPhoneField(
+                  controller: _phoneController,
+                  validator: (value) {
+                    if ((value ?? '').trim().length < 8) {
+                      return 'Enter a valid phone number';
+                    }
+                    return null;
+                  },
+                ),
+                SizedBox(height: 22.h),
+                AuthUnderlineField(
+                  label: 'Password',
+                  controller: _passwordController,
+                  obscureText: !state.isPasswordVisible,
+                  suffix: IconButton(
+                    onPressed: isLoading
+                        ? null
+                        : () => context.read<AuthCubit>().togglePasswordVisibility(),
+                    icon: Icon(
+                      state.isPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                      color: appWhiteColor.withValues(alpha: 0.9),
+                    ),
+                  ),
+                  validator: (value) {
+                    if ((value ?? '').isEmpty) {
+                      return 'Enter your password';
+                    }
+                    if (value!.length < 8) {
+                      return 'Password must be at least 8 characters';
+                    }
+                    return null;
+                  },
+                ),
+                SizedBox(height: 8.h),
+                TextButton(
+                  onPressed: isLoading
+                      ? null
+                      : () => Navigator.pushNamed(context, Routes.adminLogin),
                   child: Text(
-                    "Welcome Back",
-                    style: TextStyle(fontSize: 40, color: Colors.black,fontWeight: FontWeight.bold),
+                    'Admin login',
+                    style: TextStyle(
+                      color: darkGreenColor,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: mainFontFamily,
+                    ),
                   ),
                 ),
-                SizedBox(height: 20),
-                loginBody(context),
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget loginBody(BuildContext bContext) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20),
-      child: Form(
-        key: formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: EdgeInsets.all(5),
-              child: Text(
-                "Email",
-                style: TextStyle(fontSize: 18, color: Colors.blueGrey),
-              ),
-            ),
-            TextFormField(
-              style: TextStyle(fontSize: 20),
-              controller: emailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: InputDecoration(
-                isDense: true,
-                errorStyle: TextStyle(fontSize: 12, color: Colors.red),
-                prefixIcon: Icon(
-                  Icons.email,
-                  size: 30,
-                ),
-                border: outlineBorder(borderColor: Colors.grey[100]!),
-                focusedBorder: outlineBorder(borderColor: Colors.blue),
-                disabledBorder: outlineBorder(),
-                errorBorder: outlineBorder(borderColor: Colors.red),
-              ),
-
-              validator: validateEmail,
-            ),
-            SizedBox(height: 14),
-            Padding(
-              padding: EdgeInsets.symmetric(vertical: 5, horizontal: 5),
-              child: Text(
-                "Password",
-                style: TextStyle(fontSize: 18, color: Colors.blueGrey),
-              ),
-            ),
-            TextFormField(
-              style: TextStyle(fontSize: 20),
-              controller: passwordController,
-              obscureText: isHidden,
-              keyboardType: TextInputType.visiblePassword,
-              onFieldSubmitted: (String value) {
-                debugPrint(value);
-              },
-              onChanged: (String value) {
-                debugPrint(value);
-              },
-              decoration: InputDecoration(
-                errorStyle: TextStyle(fontSize: 12, color: Colors.red),
-                border: outlineBorder(),
-                focusedBorder: outlineBorder(borderColor: Colors.blue),
-                disabledBorder: outlineBorder(),
-                errorBorder: outlineBorder(borderColor: Colors.red),
-                prefixIcon: Icon(
-                  Icons.lock,
-                  size: MediaQuery.of(context).size.height * 0.03,
-                ),
-                suffixIcon: IconButton(
-                  onPressed: () {
-                    setState(() {
-                      isHidden = !isHidden;
-                    });
-                  },
-                  icon: Icon(
-                    isHidden ? Icons.visibility : Icons.visibility_off,
-                    size: 30,
-                  ),
-                ),
-              ),
-              validator: (value) {
-                if ((value ?? '').isEmpty) {
-                  return "Empty Password";
-                } else if (value!.length < 8) {
-                  return "Enter A Valid Password";
-                }
-                return null;
-              },
-            ),
-            SizedBox(height:30),
-            Container(
-              height: 60,
-              width: 400,
-              decoration: BoxDecoration(
-                color: Colors.blue,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: MaterialButton(
-                onPressed: () {
-                  if (formKey.currentState!.validate()) {
-
-                    showSimpleFlushBar(
-                      context,
-                      "You have logged in successfully",
-                      "welcome back",
-                      Icons.waving_hand,
-                      Colors.green
-                    ).then((value) {
-                      Navigator.pushNamed(context, Routes.mainLayout);
-                    },);
-
-                  }
-                },
-                child: Text(
-                  "Sign In",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Padding(
-                  padding: EdgeInsets.all(
-                    5,
-                  ),
-                  child: TextButton(
-                    onPressed: () {},
-                    child: Text(
-                     "Forgot Password",
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.blue,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Padding(
-                  padding: EdgeInsets.all(5),
-                  child: Text(
-                    "Don't Have An Account ?",
-                    style: TextStyle(
-                      fontSize:16,
-                      color: Colors.black,
-                    ),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {},
-                  child: Text(
-                    "Sign Up",
-                    style: TextStyle(
-                      fontSize:16,
-                      color: Colors.blue,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
+          primaryButton: AuthPrimaryButton(
+            label: 'Login',
+            isLoading: isLoading,
+            onPressed: isLoading ? null : _submit,
+          ),
+          secondaryButton: AuthOutlinedButton(
+            label: 'Create Account',
+            onPressed: isLoading
+                ? null
+                : () => Navigator.pushNamed(context, Routes.register),
+          ),
+        );
+      },
     );
   }
 }

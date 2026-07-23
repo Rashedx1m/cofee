@@ -18,4 +18,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String total(Object ammount, Object amount) {
     return 'Your Total is $ammount Dollars ';
   }
+
+  @override
+  String get orderHistory => 'Order History';
+
+  @override
+  String get profile => 'Profile';
+
+  @override
+  String get currentLanguage => 'Language: English';
 }

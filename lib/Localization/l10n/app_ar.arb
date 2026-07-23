@@ -2,5 +2,9 @@
 
 "chooseLanguage": "اختر اللغة",
 "session": "الجلسة",
-"total":"المجموع الخاص بك {amount} ليرة"
+"header": "تجربة ",
+"total":"المجموع الخاص بك {amount} ليرة",
+"orderHistory": "سجل الطلبات",
+"profile": "الملف الشخصي",
+"currentLanguage": "اللغة: العربية"
 }

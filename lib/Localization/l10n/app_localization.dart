@@ -115,6 +115,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your Total is {ammount} Dollars '**
   String total(Object ammount, Object amount);
+
+  /// No description provided for @orderHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Order History'**
+  String get orderHistory;
+
+  /// No description provided for @profile.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get profile;
+
+  /// No description provided for @currentLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Language: English'**
+  String get currentLanguage;
 }
 
 class _AppLocalizationsDelegate

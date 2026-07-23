@@ -4,8 +4,12 @@
 
 "session": "Session",
 
-"total":"Your Total is {ammount} Dollars "
+"total":"Your Total is {ammount} Dollars ",
 
+"orderHistory": "Order History",
 
+"profile": "Profile",
+
+"currentLanguage": "Language: English"
 
 }
